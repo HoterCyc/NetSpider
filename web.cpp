@@ -4,6 +4,7 @@
  */
 
 #include "web.h"
+#include "debug.h"
 
 extern set<unsigned int>Set;
 extern URL url;
@@ -27,6 +28,7 @@ unsigned int hash(const char *s)
         if(g) h ^= g>>24;
         h &= ~g;
     }
+
     return h % MOD;
 }
 
@@ -36,18 +38,13 @@ unsigned int hash(const char *s)
 
 int SetUrl(URL& url_t, string& str)
 {	
-	#ifdef DEBUG
-        printf("SetUrl: %s\n", str.c_str());
-	#endif
 	string src(str);
 
 	if(src.length() == 0 || src.find('#') != string::npos) return -1;
 	int len = src.length();
 
 	while(src[len-1] == '/') // remove the last chracter '/'s
-	{
 		src[--len] = '\0';
-	}
 	
 	// check whether src start with "http://"
 	if(src.compare(0, 7, "http://") == 0) src = src.assign(src, 7, len);
@@ -77,9 +74,7 @@ int SetUrl(URL& url_t, string& str)
 			src = string(src, p, src.length());
 		}
 		else 
-		{
 			url_t.SetHost(src);
-		}
 		url_t.SetPort(80);
 	}
 	
@@ -88,13 +83,9 @@ int SetUrl(URL& url_t, string& str)
 	p = src.find_first_of('/');
 
 	if(p != string::npos) 
-	{
 		url_t.SetFile(src);
-	}
 	else 
-	{
 		url_t.SetFile("/");
-	}
 	
 	return 1;
 }
@@ -129,9 +120,7 @@ void Analyse(string& src)
 	{
         int pp = p+4;
         while(src[pp] == ' ') 
-        {
             pp++;
-        }
 
         if(src[pp] != '=')
         {
@@ -146,21 +135,15 @@ void Analyse(string& src)
 
 		// url can be surrounded by '\"', '\'', ' '
 		while(src[p1] == ' ') 
-		{
 			p1++;
-		}
+
 		if(src[p1] == '\"')
-		{
 			flag = 0;
-		}
 		else if(src[p1] == '\'')
-		{
 			flag = 1;
-		}
 		else 
-		{
 			flag = 3;
-		}
+
 		switch(flag)
 		{
 			case 0:
@@ -174,18 +157,14 @@ void Analyse(string& src)
 			case 3:
 				p2 = p1;
 				while(src[p2] != ' ' && src[p2] != '>')
-				{
 					p2++;
-				}
 		}
 
 		// judge whether contains keyword
 		str = string(src, p1, p2-p1);
 		
-		if(str.find(keyword) == string::npos)
-		{
+		if(keyword != "" && str.find(keyword) == string::npos)
 			continue;
-		}
 		else 
 		{
 			// judge whether contains 'http://'
@@ -194,25 +173,20 @@ void Analyse(string& src)
 				int pos = 1;
 
 				while(str[pos] == '/')
-				{
 					pos++;
-				}
 				str = string(str, pos-1);
 				str.insert(0, "http://"+url.GetHost());
 			}
 			else if(str.find(url.GetHost()) == string::npos)
-			{
 				continue;
-			}
+
 			if(SetUrl(url_t, str) < 0) 
-			{
 				continue;
-			}
 		}
 
-		#ifdef DEBUG
-			cout<<p<<" "<<p1<<" "<<p2<<" "<<url_t.GetFile()<<endl;
-		#endif
+		//#ifdef DEBUG
+		//	cout<<p<<" "<<p1<<" "<<p2<<" "<<url_t.GetFile()<<endl;
+		//#endif
 		
 		// modify the set(Set)
 		unsigned int hashVal = hash(url_t.GetFile().c_str());
@@ -227,6 +201,11 @@ void Analyse(string& src)
 			pthread_mutex_unlock(&setlock);
 			url_t.SetFname(string(tmp)+".html");
 			pthread_mutex_lock(&quelock);
+#ifdef DEBUG
+            char info[120];
+            sprintf(info, "Add queue: %s", url_t.GetFile().c_str());
+            PRINT(info);
+#endif
 			que.push(url_t);
 			pthread_mutex_unlock(&quelock);
 			

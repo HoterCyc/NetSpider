@@ -5,27 +5,9 @@
  */
 
 #include "http.h"
+#include "debug.h"
 #include "config.h"
-
-/* global data definition
- */
-
-struct epoll_event events[31];	// return events which will be dealed with.
-set<unsigned int>Set;			// the 'hash-table'.
-URL url;						// first url we set.
-queue<URL>que;					// url wait-queue(from each thread).
-int cnt;						// record how many urls we have fetched.
-int sum_byte;					// record how many bytes we have fetched.
-int pending;					// record pending urls that wait to deal with 
-int epfd;						// record the epoll fd.
-bool is_first_url;				// judge whether is the first url.
-double time_used;               // record totally time costed.
-pthread_mutex_t quelock = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t setlock = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t connlock = PTHREAD_MUTEX_INITIALIZER;
-string input;
-string HtmFile;
-string keyword;
+#include "spider.h"
 
 /* init()
  * initialize global data
@@ -107,9 +89,7 @@ void generator()
 	{
         // max num of url we want to fetch
         if(cnt>=MAX_URL) 
-        {
             break;
-        }
 
         // int epoll_wait(int epfd, struct epoll_event * events, int maxevents, int timeout);
 		int n = epoll_wait(epfd, events, 30, 2000);
@@ -190,9 +170,8 @@ void start_run()
 		// connect to web
 		int retry_conn_times = 0;
 		while(ConnectWeb(sockfd) < 0 && retry_conn_times < 10) 
-		{
 			retry_conn_times++;
-		}
+
 		if(retry_conn_times >= 10) 
 		{
 			perror("create socket");
@@ -293,9 +272,7 @@ int main(int argc, char **argv)
 	
 	// get normalize of the first url(url).
 	if(SetUrl(url, input) < 0) 
-	{
 		puts("input url error");
-	}
 	
 	// get host by name(do only once in the whole program)
 	if(GetHostByName(url.GetHost()) < 0)
@@ -311,6 +288,12 @@ int main(int argc, char **argv)
 	
 	sprintf(tmp, "%010u", hashVal);
 	url.SetFname(string(tmp)+".html");
+
+#ifdef DEBUG
+    char info[120];
+    sprintf(info, "Add queue: %s", url.GetFile().c_str());
+    PRINT(info);
+#endif
 	que.push(url);
 		
 	pthread_mutex_lock(&setlock);

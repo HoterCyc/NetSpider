@@ -1,16 +1,16 @@
-#ifndef CONFIGH
-#define CONFIGH
+#ifndef CONFIG_H
+#define CONFIG_H
+
 #include <stdio.h>
 #include <getopt.h>
-
-#define DEBUG
 
 const int INF = 0x7fffffff;
 const int MAXLEN = 500000;
 const char* const short_opt = "hn:u:k:t:";
 string START_URL = "http://hi.baidu.com/shouzhewei/home";// "http://blog.csdn.net/yuanmeng001"; 
-string KEYWORD =  "shouzhewei"; // "yuanmeng001";
-int MAX_URL = INF;
+string KEYWORD =  ""; 
+//int MAX_URL = INF;
+int MAX_URL = 2;
 int TIMEOUT = 10;
 const struct option long_opt[] = 
 {

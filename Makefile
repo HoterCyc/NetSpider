@@ -1,6 +1,7 @@
 all: spider
 OBJ = spider.o http.o web.o 
-CPPFLAGS = -O -Wall -lpthread
+#CPPFLAGS = -O -Wall -lpthread
+CPPFLAGS = -O -w -lpthread
 spider: $(OBJ)
 	g++ -o spider $(OBJ) $(CPPFLAGS)
 .cpp.o:

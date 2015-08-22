@@ -4,6 +4,7 @@
  */
 
 #include "http.h"
+#include "debug.h"
 
 extern set<unsigned int>Set;
 extern URL url; 
@@ -30,7 +31,8 @@ int GetHostByName(const string& hname)
 	{
 		return -1;
 	}
-	return 1;
+
+	return 0;
 }
 
 /* SetNoblocking()
@@ -53,6 +55,8 @@ int SetNoblocking(const int& sockfd)
 	{
 		return -1;
 	}
+
+    return 0;
 }
 
 /* ConnectWeb()
@@ -66,11 +70,10 @@ int ConnectWeb(int& sockfd)
 
 	// create socket
 	if((sockfd = socket(PF_INET, SOCK_STREAM, 0)) == -1) 
-	{
 		return -1;
-	}
+
 	#ifdef DEBUG
-		puts("create socket ok");
+        PRINT("create socket success");
 	#endif
 	
 	// initialize server_addr
@@ -85,13 +88,16 @@ int ConnectWeb(int& sockfd)
 		perror("connect error");
 		return -1;
 	}
+
 	#ifdef DEBUG
-		puts("connect ok");
+		PRINT("connect socket success");
 	#endif
 	
 	pthread_mutex_lock(&connlock);
 	pending++;
 	pthread_mutex_unlock(&connlock);
+
+    return 0;
 }
 
 /* SendRequest()
@@ -107,9 +113,10 @@ int SendRequest(int sockfd, URL& url_t)
 	request = "GET /" + url_t.GetFile() + " HTTP/1.1\r\nHost: " + url_t.GetHost() + "\r\nUser-Agent: " + 
 			  Uagent + "\r\nAccept: " + Accept + "\r\nConnection: " + Conn + "\r\n\r\n";
 
-	#ifdef DEBUG
-        cout << request << endl;
-	#endif
+	//#ifdef DEBUG
+    //    const char *info = request.c_str();
+    //    PRINT(info);
+	//#endif
   
 	// write(send request)
 	int d, total = request.length(), send = 0;
@@ -117,14 +124,15 @@ int SendRequest(int sockfd, URL& url_t)
 	while(send < total)
 	{
 		if((d = write(sockfd, request.c_str()+send, total-send)) < 0) 
-		{
 			return -1;
-		}
 		send += d;
 	}
+
 	#ifdef DEBUG
-		puts("write in socket ok");
+		PRINT("socket write success");
 	#endif
+
+    return 0;
 }
 
 /* Calc_Time_Sec()
@@ -242,12 +250,10 @@ void* GetResponse(void *argument)
 		if(errno == EEXIST)
 		{
 			stat(url_t.GetFname().c_str(), &buf);
-			int len = buf.st_size;
 
+			int len = buf.st_size;
 			if(len >= flen)
-			{
 				goto NEXT;
-			}
 			else
 			{
 				fd = open(url_t.GetFname().c_str(), O_RDWR|O_TRUNC, 00770);
@@ -269,26 +275,22 @@ void* GetResponse(void *argument)
 
 NEXT:
 	
-	close(fd); // do not forget to close the fd	
+	close(fd); // Notes	
 	pthread_mutex_lock(&connlock);
 	pending--;
 	cnt++;
 	
     // print debug infomation
     printf("S:%-6.2fKB  I:%-5dP:%-5dC:%-5d", flen/1024.0, que.size(), pending, cnt);
-    printf("[re-]fetch:[%s]->[%s]\n", url_t.GetFile().c_str(), url_t.GetFname().c_str());
+    printf("Fetch: [%s] -> [%s]\n", url_t.GetFile().c_str(), url_t.GetFname().c_str());
 	
 	pthread_mutex_unlock(&connlock);
 
 	// judge how many new url in wait-queue can pop()
 	if (pending <= 30)
-	{
 		n = 5;
-	}
 	else 
-	{
 		n = 1;	
-	}
 
 	for(int i=0; i<n; i++) 
 	{
@@ -302,9 +304,7 @@ NEXT:
 				continue;
 			}
 			else 
-			{
 				break;
-			}
 		}
 		pthread_mutex_lock(&quelock);
 		URL url_t = que.front();
@@ -316,9 +316,8 @@ NEXT:
 
         // connect to web 
 		while(ConnectWeb(sockfd) < 0 && timeout < 10) 
-		{
 			timeout++;
-		}
+
         if(timeout>=10) 
         {
             perror("create socket");
@@ -348,5 +347,6 @@ NEXT:
 		
 		epoll_ctl(epfd, EPOLL_CTL_ADD, sockfd, &ev);
 	}
+
 	pthread_exit(NULL);
 }

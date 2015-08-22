@@ -1,6 +1,7 @@
-#ifndef HTTPH
-#define HTTPH
+#ifndef HTTP_H
+#define HTTP_H
 
+#include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <fstream>

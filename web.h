@@ -1,7 +1,5 @@
-#ifndef WEBH
-#define WEBH
-
-#define DEBUG
+#ifndef WEB_H
+#define WEB_H
 
 #include <iostream>
 #include <cstdio>
