@@ -1,6 +1,8 @@
 #ifndef WEBH
 #define WEBH
 
+#define DEBUG
+
 #include <iostream>
 #include <cstdio>
 #include <string>

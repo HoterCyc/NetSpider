@@ -36,6 +36,9 @@ unsigned int hash(const char *s)
 
 int SetUrl(URL& url_t, string& str)
 {	
+	#ifdef DEBUG
+        printf("SetUrl: %s\n", str.c_str());
+	#endif
 	string src(str);
 
 	if(src.length() == 0 || src.find('#') != string::npos) return -1;

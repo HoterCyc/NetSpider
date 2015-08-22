@@ -29,10 +29,12 @@ struct argument {
 };
 
 //typedef unsigned int uint
-//"Wget/1.10.2"//"iaskspider/2.0" //"Sogou Push Spider/3.0" //"msnbot/1.0" //"Sogou web spider/3.0"// "Mozilla/5.0" //"googlebot/2.1"
-#define UAGENT "Baiduspider"
+//"Baiduspider" "Wget/1.10.2"//"iaskspider/2.0" //"Sogou Push Spider/3.0" //"msnbot/1.0" //"Sogou web spider/3.0"// "Mozilla/5.0" //"googlebot/2.1"
+#define UAGENT "" 
 #define ACCEPT "*/*"
 #define CONN "keep-alive"
+
+#define DEBUG
 
 int GetHostByName(const string&);
 int SetNoblocking(const int&);

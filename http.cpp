@@ -9,14 +9,12 @@ extern set<unsigned int>Set;
 extern URL url; 
 extern queue<URL>que;
 extern struct epoll_event events[31];
-extern struct timeval t_st, t_ed;
 extern int epfd;
 extern int cnt;
 extern int sum_byte;
 extern int pending;
 extern int MAX_URL;
 extern bool is_first_url;
-extern double time_used;
 extern pthread_mutex_t quelock;
 extern pthread_mutex_t connlock;
 struct hostent *Host;
@@ -108,6 +106,10 @@ int SendRequest(int sockfd, URL& url_t)
 	string Uagent = UAGENT, Conn = CONN, Accept = ACCEPT;
 	request = "GET /" + url_t.GetFile() + " HTTP/1.1\r\nHost: " + url_t.GetHost() + "\r\nUser-Agent: " + 
 			  Uagent + "\r\nAccept: " + Accept + "\r\nConnection: " + Conn + "\r\n\r\n";
+
+	#ifdef DEBUG
+        cout << request << endl;
+	#endif
   
 	// write(send request)
 	int d, total = request.length(), send = 0;
@@ -272,17 +274,9 @@ NEXT:
 	pending--;
 	cnt++;
 	
-    // calculate how many time has been used
-	gettimeofday(&t_ed, NULL);
-	time_used = Calc_Time_Sec(t_st, t_ed);
-
     // print debug infomation
     printf("S:%-6.2fKB  I:%-5dP:%-5dC:%-5d", flen/1024.0, que.size(), pending, cnt);
     printf("[re-]fetch:[%s]->[%s]\n", url_t.GetFile().c_str(), url_t.GetFname().c_str());
-
-	//cout<<"Get:["<<url_t.GetFile()<<"]"<<" --> ["<<url_t.GetFname()<<"]  ";
-	//cout<<"size:"<<flen/1024.0<<"KB"<<"  "<<"inq:"<<que.size()<<"  "<<"pending:"<<pending<<"  "<<"completed:"<<cnt+1<<endl;
-	//cout<<"  "<<"avg_rate:"<<sum_byte/1024.0/time_used<<"KB/s"<<"  "<<"timec:"<<time_used<<"s"<<endl;
 	
 	pthread_mutex_unlock(&connlock);
 
