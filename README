@@ -1,0 +1,46 @@
+README FILE
+
+Description
+
+    This spider is written for graduate-paper. The spider i
+s used to fetch web pages from a starting url we set under 
+the same domain. But it is just used in Linux environment b
+ecause it called some lib-functions only exist in Linux. We
+can usually fetch web pages of a blog where the articles yo
+u like very much. Speak simply, this tool likes a blog tran
+fer tool.
+
+
+Usage
+
+    You should first set your config infomation at 'config-
+g' file. Such as 'START_URL', 'KEYWORD' etc. Next steps:
+    1. use command 'make clean' or 'make cleanall' to clean
+.o file or old web pages.
+    2. use command 'make' to compile.
+    3. execute file--'spider' to start fetch. './spider'.
+    If you want to know the usage of this spider, you can j
+ust type format like as './spider --usage'.
+example
+    ./spider -h
+    ./spider -n 1000 -u http://hi.baidu.com/xxx -k xxx
+    ./spider --url http://hi.baidu.com/xxx --key xxx
+    ./spider --url http://hi.baidu.com/xxx -t 15
+
+
+Attention
+
+    You should make sure that the directory 'Pages' has exi
+sted. 
+    If you want to fetch web pages without delete previous 
+web pages, you can use 'make clean' and continue fetching. 
+The spider can automaticly update old web pages(if the new 
+fetched page's size is bigger than old one, it will update 
+the pages). Otherwise, you can use 'make cleanall' to fetch
+web pages from the very beginning.
+
+
+Environment
+
+   Pre-condition: vim, build-essential...
+   Env-used:      only in Linux
