@@ -73,7 +73,7 @@ int ConnectWeb(int& sockfd)
 		return -1;
 
 	#ifdef DEBUG
-        PRINT("create socket success");
+        //PRINT("create socket success");
 	#endif
 	
 	// initialize server_addr
@@ -90,7 +90,7 @@ int ConnectWeb(int& sockfd)
 	}
 
 	#ifdef DEBUG
-		PRINT("connect socket success");
+		//PRINT("connect socket success");
 	#endif
 	
 	pthread_mutex_lock(&connlock);
@@ -129,7 +129,7 @@ int SendRequest(int sockfd, URL& url_t)
 	}
 
 	#ifdef DEBUG
-		PRINT("socket write success");
+		//PRINT("socket write success");
 	#endif
 
     return 0;
@@ -153,6 +153,54 @@ double Calc_Time_Sec(struct timeval st, struct timeval ed)
 	return sec + usec/1000000;
 }
 
+/* read_and_parse_header(sockfd)
+ * return content length
+ */
+
+int read_and_parse_header(int sockfd)
+{
+    char line_buf[255];
+    char ch[2];
+    int  n;
+    int  content_length = -1;
+    bool resp_success = false; 
+
+    while(1)
+    {
+        int i=0;
+        memset(line_buf, 0, sizeof(line_buf));
+        // read line
+        while(1)
+        {
+            n=read(sockfd, ch, 1);
+            if (n < 0 && errno == EAGAIN)
+            {
+                PRINT("warning: errno=EAGAIN");
+                sleep(1);
+                continue;
+            }
+
+            line_buf[i++] = ch[0];
+            if (ch[0] == '\n')
+                break;
+        }
+
+#ifdef DEBUG
+        PRINT(line_buf);
+#endif
+        if (strcmp(line_buf, "\r\n") == 0)
+            break;
+
+        if (strcmp("HTTP/1.1 200 OK\r\n", line_buf) == 0)
+            resp_success = true;
+
+        if (strncmp("Content-Length", line_buf, 14) == 0)
+            sscanf(line_buf, "Content-Length: %d", &content_length);
+    }
+
+    return (resp_success == true) ? content_length : -1;
+}
+
 /* GetResponse()
  * receive the data from host. which will return page information.
  * if ok(get the Web page successfully), it will analyse the page.
@@ -161,87 +209,80 @@ double Calc_Time_Sec(struct timeval st, struct timeval ed)
 
 void* GetResponse(void *argument)
 {
-	struct argument *ptr = (struct argument *)argument; // receive the peramter
-	struct stat buf;                                    // record the file information
-	int timeout;
+	struct argument *arg = (struct argument *)argument; // receive the parameter
+	struct stat file_stat;                              // record the file information
+	int timeout = 0;
 	int flen;
-	int sockfd = ptr->sockfd;
-	char ch[2];
+	int sockfd = arg->sockfd;
+    int n, len;
+    int fd;
 	char buffer[1024];                                  // record read buffer from every read() operation
-	char headbuffer[2048];                              // record headbuffer from Web Page
-	char tmp[MAXLEN];                                   // record the tmp Web Page
-	URL url_t = ptr->url;
+	char tmp[MAXLEN]={0};                               // record the tmp Web Page
+	string HtmFile;
 
-	*tmp = 0;
-	
-	// read headbuffer
-	int i=0,j=0, n;
+	URL url_t = arg->url;
+	int content_length = read_and_parse_header(sockfd);
+
+#ifdef DEBUG
+    char info[200];
+    sprintf(info, "content_length: %d", content_length);
+    PRINT(info);
+#endif
+
+    // skip read the content since the GET request is failed
+    if (content_length < 0)
+    {
+        close(sockfd);
+        goto NEXT;
+    }
+
+	// read size of len everytime from page context
+	len = sizeof(buffer) - 1;
 
 	while(1) 
 	{
-		n = read(sockfd, ch, 1);
+        // 0 indicate read complete
+		n = read(sockfd, buffer, len);
+
+        if (n == 0) // (TODO n will not = 0 when complete reading)
+            break;
 
 		if(n < 0) 
 		{
 			if(errno == EAGAIN) 
 			{
-				sleep(1);
-				continue;
-			}
-		}
-		if(*ch == '>') 
-		{
-			headbuffer[j++] = *ch;
-			break;
-		}
-	}
-	headbuffer[j] = 0;
-	
-	// read page context
-	int need = sizeof(buffer) - 1;
-	timeout = 0;
-
-	while(1) 
-	{
-		n = read(sockfd, buffer, need);
-
-        // we think that when read() return 0, the Web Page has fetched over
-		if(!n) break;
-		if(n < 0) 
-		{
-			if(errno == EAGAIN) 
-			{
-				timeout++;
-				
-				if(timeout>10)
-				{
-				 	//printf("complete or net-speed is not ok. we will stop here\n");
-				 	break;
-				}
+                PRINT("warning: errno=EAGAIN");
 				sleep(1);
 				continue;
 			}
 			else 
 			{
 				perror("read");
-				return NULL;
+                close(sockfd);
+				goto NEXT;
 			}
 		}
 		else 
 		{
 			sum_byte += n;
-			timeout = 0;
 			strncat(tmp, buffer, n);
+
+            // complete  
+            if (sum_byte >= content_length)
+                break;
 		}
 	}
 	close(sockfd); // attention: do not forget close sockfd.
-	
-	string HtmFile(tmp);
+
+#ifdef DEBUG
+    PRINT("get response");    
+#endif
+    HtmFile = string(tmp);
 	Analyse(HtmFile);
 	flen = HtmFile.length();
 	
 	chdir("Pages");
-	int fd = open(url_t.GetFname().c_str(), O_CREAT|O_EXCL|O_RDWR, 00770);
+	fd = open(url_t.GetFname().c_str(), O_CREAT|O_EXCL|O_RDWR, 00770);
 
     /* check whether needs re-fetch */
 
@@ -249,9 +290,9 @@ void* GetResponse(void *argument)
 	{
 		if(errno == EEXIST)
 		{
-			stat(url_t.GetFname().c_str(), &buf);
+			stat(url_t.GetFname().c_str(), &file_stat);
 
-			int len = buf.st_size;
+			int len = file_stat.st_size;
 			if(len >= flen)
 				goto NEXT;
 			else
@@ -274,15 +315,18 @@ void* GetResponse(void *argument)
 	write(fd, HtmFile.c_str(), HtmFile.length());
 
 NEXT:
-	
+
 	close(fd); // Notes	
 	pthread_mutex_lock(&connlock);
 	pending--;
-	cnt++;
-	
-    // print debug infomation
-    printf("S:%-6.2fKB  I:%-5dP:%-5dC:%-5d", flen/1024.0, que.size(), pending, cnt);
-    printf("Fetch: [%s] -> [%s]\n", url_t.GetFile().c_str(), url_t.GetFname().c_str());
+    
+    if (content_length > 0)
+    {
+        cnt++;
+        // print debug infomation
+        printf("S:%-6.2fKB  I:%-5dP:%-5dC:%-5d", flen/1024.0, que.size(), pending, cnt);
+        printf("Fetch: [%s] -> [%s]\n", url_t.GetFile().c_str(), url_t.GetFname().c_str());
+    }
 	
 	pthread_mutex_unlock(&connlock);
 

@@ -97,7 +97,9 @@ void generator()
         // set retry_wait_times 
 		if(retry_wait_times >= TIMEOUT) 
 		{
-			printf("wait time out for retry %d times\n", TIMEOUT);
+            char info[200];
+			sprintf(info, "wait time out for retry %d times\n", TIMEOUT);
+            PRINT(info);
 			break;
 		}
 		if(n<0) 
@@ -233,8 +235,8 @@ void summery(timeval t_st, timeval t_ed)
     printf("totally urls fetched:   %d\n", cnt);
     printf("totally byte fetched:   %.2fKB\n", sum_byte/1024.0);
     printf("totally time cost:      %.2fs\n", time_used);
-    printf("average download speed: %.2fKB/s\n", sum_byte/1024.0/(time_used-TIMEOUT));
-    printf("auther:                 xxx\n");
+    printf("average download speed: %.2fKB/s\n", sum_byte/1024.0/time_used);
+    printf("auther:                 szw\n");
     printf("date:                   %04d-%02d-%02d\n",(1900+p->tm_year), (1+p->tm_mon),p->tm_mday);  
     printf("time:                   %02d:%02d:%02d\n", (p->tm_hour+8)%24, p->tm_min, p->tm_sec);  
     printf("----------------------------------------------------------------------\n");
@@ -280,7 +282,6 @@ int main(int argc, char **argv)
 		printf("gethostbyname error\n");
 		exit(1);
 	}
-	cout<<"start fetching url: "<<url.GetHost()<<url.GetFile()<<endl;
 	
     // use hash value for html page
 	unsigned int hashVal = hash(url.GetFile().c_str());
