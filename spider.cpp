@@ -288,7 +288,7 @@ int main(int argc, char **argv)
 	char tmp[31];
 	
 	sprintf(tmp, "%010u", hashVal);
-	url.SetFname(string(tmp)+".html");
+	url.SetFname(string(tmp)+url.GetFileType());
 
 #ifdef DEBUG
     char info[120];

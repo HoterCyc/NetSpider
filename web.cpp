@@ -36,24 +36,30 @@ unsigned int hash(const char *s)
  * this functions will analysis url and return a normalize url.
  */
 
-int SetUrl(URL& url_t, string& str)
+int SetUrl(URL& url_t, string& url)
 {	
-	string src(str);
+    int p;
+	string src(url);
 
-	if(src.length() == 0 || src.find('#') != string::npos) return -1;
+    // invalid url
+	if(src.length() == 0 || src.find('#') != string::npos) 
+        return -1;
+
+    // 1. initialize
 	int len = src.length();
+	//while(src[len-1] == '/') // remove the last chracter '/'s
+	//	src[--len] = '\0';
 
-	while(src[len-1] == '/') // remove the last chracter '/'s
-		src[--len] = '\0';
+    // rm characters after '?'
+    if ((p = src.find_first_of('?')) != string::npos)
+        src[p] = '\0';
 	
 	// check whether src start with "http://"
-	if(src.compare(0, 7, "http://") == 0) src = src.assign(src, 7, len);
+	if(src.compare(0, 7, "http://") == 0) 
+        src = src.assign(src, 7, len);
 	
-
-	/* below will set url's host, port*/
-	int p = src.find_first_of(':');
-
-	if(p != string::npos) // explicit port number
+	/* 2. set url's host, port*/
+	if((p = src.find_first_of(':')) != string::npos) // explicit port number
 	{
 		url_t.SetHost(string(src, 0, p));
 		
@@ -66,9 +72,7 @@ int SetUrl(URL& url_t, string& str)
 	}
 	else // implicit port number
 	{
-		p = src.find_first_of('/'); 
-
-		if(p != string::npos) 
+		if((p = src.find_first_of('/')) != string::npos) 
 		{
 			url_t.SetHost(string(src, 0, p));
 			src = string(src, p, src.length());
@@ -78,16 +82,18 @@ int SetUrl(URL& url_t, string& str)
 		url_t.SetPort(80);
 	}
 	
-	/* below will set url's file */
-
-	p = src.find_first_of('/');
-
-	if(p != string::npos) 
+	/* 3. set url's file && fileType*/
+	if((p = src.find_first_of('/')) != string::npos) 
+    {
 		url_t.SetFile(src);
+        if((p = src.find_first_of('.')) != string::npos) 
+            url_t.SetFileType(src.substr(p));
+
+    }
 	else 
 		url_t.SetFile("/");
 	
-	return 1;
+	return 0;
 }
 
 /* tolower() 
@@ -109,7 +115,7 @@ void tolower(string& src)
 
 void Analyse(string& src)
 {
-	int p=0, p1, p2;
+	int p=0, p1, p2; // p is the anchor of searching
 	int flag;
 	URL url_t;
 	string str;
@@ -133,32 +139,16 @@ void Analyse(string& src)
             p1 = pp+1;
         }
 
-		// url can be surrounded by '\"', '\'', ' '
+		// url can be surrounded by '\"', '\''
 		while(src[p1] == ' ') 
 			p1++;
 
-		if(src[p1] == '\"')
-			flag = 0;
-		else if(src[p1] == '\'')
-			flag = 1;
-		else 
-			flag = 3;
+		char ch = src[p1];
+        if (ch != '\'' && ch != '\"')
+            continue;
 
-		switch(flag)
-		{
-			case 0:
-				p1++;
-				p2 = src.find_first_of('\"', p1);
-				break;
-			case 1:
-				p1++;
-				p2 = src.find_first_of('\'', p1);
-				break;
-			case 3:
-				p2 = p1;
-				while(src[p2] != ' ' && src[p2] != '>')
-					p2++;
-		}
+        p1++;
+        p2 = src.find_first_of(ch, p1);
 
 		// judge whether contains keyword
 		str = string(src, p1, p2-p1);
@@ -167,18 +157,19 @@ void Analyse(string& src)
 			continue;
 		else 
 		{
-			// judge whether contains 'http://'
-			if(str.find("http://") == string::npos)
+			// judge whether contains '//'
+			if(str.find("//") != string::npos)
 			{
-				int pos = 1;
+                if (str.find(url.GetHost()) == string::npos)
+                    continue;  // Host inconsistent
 
-				while(str[pos] == '/')
-					pos++;
-				str = string(str, pos-1);
-				str.insert(0, "http://"+url.GetHost());
+                if (str.find("http:") == string::npos)
+                    str.insert(0, "http:");
 			}
-			else if(str.find(url.GetHost()) == string::npos)
-				continue;
+            else
+            {
+                str.insert(0, "http://"+url.GetHost());
+            }
 
 			if(SetUrl(url_t, str) < 0) 
 				continue;
@@ -199,7 +190,7 @@ void Analyse(string& src)
 			pthread_mutex_lock(&setlock);
 			Set.insert(hashVal);
 			pthread_mutex_unlock(&setlock);
-			url_t.SetFname(string(tmp)+".html");
+			url_t.SetFname(string(tmp) + url_t.GetFileType());
 			pthread_mutex_lock(&quelock);
 #ifdef DEBUG
             char info[120];
@@ -210,7 +201,7 @@ void Analyse(string& src)
 			pthread_mutex_unlock(&quelock);
 			
 		}
-		src.insert(p1-1, "\""+string(tmp)+".html\" ");
+		src.insert(p1-1, "\"" + string(tmp) + url_t.GetFileType() + "\" ");
 	}
 }
 

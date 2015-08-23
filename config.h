@@ -10,8 +10,8 @@ const char* const short_opt = "hn:u:k:t:";
 string START_URL = "http://hi.baidu.com/shouzhewei/home";// "http://blog.csdn.net/yuanmeng001"; 
 string KEYWORD =  ""; 
 //int MAX_URL = INF;
-int MAX_URL = 2;
-int TIMEOUT = 10;
+int MAX_URL = 10;
+int TIMEOUT = 5;
 const struct option long_opt[] = 
 {
     {"help", 0, NULL, 'h'},

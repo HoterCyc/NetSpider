@@ -109,14 +109,28 @@ int SendRequest(int sockfd, URL& url_t)
 {
 	// initialize request
 	string request;
-	string Uagent = UAGENT, Conn = CONN, Accept = ACCEPT;
-	request = "GET /" + url_t.GetFile() + " HTTP/1.1\r\nHost: " + url_t.GetHost() + "\r\nUser-Agent: " + 
-			  Uagent + "\r\nAccept: " + Accept + "\r\nConnection: " + Conn + "\r\n\r\n";
+    string url = "http://" + url_t.GetHost() + url_t.GetFile();
+    //string url = "http://www.baidu.com/more";
+	string Uagent = UAGENT;
+    string Conn = CONN;
+    string Accept = ACCEPT;
 
-	//#ifdef DEBUG
-    //    const char *info = request.c_str();
-    //    PRINT(info);
-	//#endif
+    cout << url << endl;
+
+    request = "GET " + url + " HTTP/1.1\r\n" +
+              "Host: " + url_t.GetHost() + "\r\n" +
+              "User-Agent: " + Uagent + "\r\n" +
+              "Accept: " + Accept + "\r\n" +
+              "Connection: " + Conn + "\r\n\r\n";
+
+    //char req[250];
+    //sprintf(req, "%s %s HTTP/1.1\r\nAccept: %s\r\nHost: %s\r\nConnection: %s\r\n\r\n", 
+    //                           "GET", "http://www.baidu.com/more/", "html/text", "www.baidu.com", "Close"); 
+    //request = string(req);
+	#ifdef DEBUG
+        const char *info = request.c_str();
+        PRINT(info);
+	#endif
   
 	// write(send request)
 	int d, total = request.length(), send = 0;
@@ -129,7 +143,7 @@ int SendRequest(int sockfd, URL& url_t)
 	}
 
 	#ifdef DEBUG
-		//PRINT("socket write success");
+		//PRINT("Req sent success");
 	#endif
 
     return 0;
@@ -154,7 +168,7 @@ double Calc_Time_Sec(struct timeval st, struct timeval ed)
 }
 
 /* read_and_parse_header(sockfd)
- * return content length
+ * parse HTML header and return content length
  */
 
 int read_and_parse_header(int sockfd)
@@ -162,6 +176,7 @@ int read_and_parse_header(int sockfd)
     char line_buf[255];
     char ch[2];
     int  n;
+    int  retrytimes = 0;
     int  content_length = -1;
     bool resp_success = false; 
 
@@ -176,8 +191,13 @@ int read_and_parse_header(int sockfd)
             if (n < 0 && errno == EAGAIN)
             {
                 PRINT("warning: errno=EAGAIN");
-                sleep(1);
-                continue;
+                if (++retrytimes >=5)
+                    return -1;
+                else
+                {
+                    sleep(1);
+                    continue;
+                }
             }
 
             line_buf[i++] = ch[0];
@@ -191,7 +211,8 @@ int read_and_parse_header(int sockfd)
         if (strcmp(line_buf, "\r\n") == 0)
             break;
 
-        if (strcmp("HTTP/1.1 200 OK\r\n", line_buf) == 0)
+        if (strcmp("HTTP/1.1 200 OK\r\n", line_buf) == 0 ||
+            strcmp("HTTP/1.1 301 Moved Permanently\r\n", line_buf) == 0)
             resp_success = true;
 
         if (strncmp("Content-Length", line_buf, 14) == 0)
@@ -214,18 +235,17 @@ void* GetResponse(void *argument)
 	int timeout = 0;
 	int flen;
 	int sockfd = arg->sockfd;
-    int n, len;
+    int n, len, recv_len;
     int fd;
 	char buffer[1024];                                  // record read buffer from every read() operation
 	char tmp[MAXLEN]={0};                               // record the tmp Web Page
-	string HtmFile;
 
 	URL url_t = arg->url;
 	int content_length = read_and_parse_header(sockfd);
 
 #ifdef DEBUG
     char info[200];
-    sprintf(info, "content_length: %d", content_length);
+    sprintf(info, "expected content_length: %d", content_length);
     PRINT(info);
 #endif
 
@@ -238,6 +258,7 @@ void* GetResponse(void *argument)
 
 	// read size of len everytime from page context
 	len = sizeof(buffer) - 1;
+    recv_len = 0;
 
 	while(1) 
 	{
@@ -264,59 +285,51 @@ void* GetResponse(void *argument)
 		}
 		else 
 		{
-			sum_byte += n;
-			strncat(tmp, buffer, n);
+			sum_byte += n; // for summery
+            memcpy(tmp+recv_len, buffer, n);
+            recv_len += n;
+			//strncat(tmp, buffer, n);
 
+            //printf("xxxx: %d %d %d\n", n, recv_len, strlen(tmp));
             // complete  
-            if (sum_byte >= content_length)
+            if (recv_len >= content_length)
                 break;
 		}
 	}
 	close(sockfd); // attention: do not forget close sockfd.
 
 #ifdef DEBUG
-    PRINT("get response");    
+    sprintf(info, "received content_length: %d", recv_len);
+    PRINT(info);
 #endif
-    HtmFile = string(tmp);
-	Analyse(HtmFile);
-	flen = HtmFile.length();
-	
+
+    if (recv_len < content_length)
+        goto NEXT;
+
+    if (url_t.GetFileType() == "" || 
+        url_t.GetFileType() == ".html" ||
+        url_t.GetFileType() == ".htm")
+    {
+        string html_content = string(tmp);
+        Analyse(html_content);
+    }
+
 	chdir("Pages");
 	fd = open(url_t.GetFname().c_str(), O_CREAT|O_EXCL|O_RDWR, 00770);
 
-    /* check whether needs re-fetch */
-
-	if(fd < 0)
+	if (fd < 0 && errno != EEXIST)
 	{
-		if(errno == EEXIST)
-		{
-			stat(url_t.GetFname().c_str(), &file_stat);
-
-			int len = file_stat.st_size;
-			if(len >= flen)
-				goto NEXT;
-			else
-			{
-				fd = open(url_t.GetFname().c_str(), O_RDWR|O_TRUNC, 00770);
-
-                if(fd < 0) 
-                {
-                    perror("file open error");
-                    goto NEXT;
-                }
-			}
-		}
-		else
-		{
-			perror("file open error");
-			goto NEXT;
-		}
+        //stat(url_t.GetFname().c_str(), &file_stat);
+        perror("file open error");
 	}
-	write(fd, HtmFile.c_str(), HtmFile.length());
+    else 
+    {
+        write(fd, tmp, content_length);
+        close(fd);	
+    }
 
 NEXT:
 
-	close(fd); // Notes	
 	pthread_mutex_lock(&connlock);
 	pending--;
     
@@ -324,7 +337,7 @@ NEXT:
     {
         cnt++;
         // print debug infomation
-        printf("S:%-6.2fKB  I:%-5dP:%-5dC:%-5d", flen/1024.0, que.size(), pending, cnt);
+        printf("S:%-6.2fKB  I:%-5dP:%-5dC:%-5d", recv_len/1024.0, que.size(), pending, cnt);
         printf("Fetch: [%s] -> [%s]\n", url_t.GetFile().c_str(), url_t.GetFname().c_str());
     }
 	

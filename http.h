@@ -31,9 +31,10 @@ struct argument {
 
 //typedef unsigned int uint
 //"Baiduspider" "Wget/1.10.2"//"iaskspider/2.0" //"Sogou Push Spider/3.0" //"msnbot/1.0" //"Sogou web spider/3.0"// "Mozilla/5.0" //"googlebot/2.1"
-#define UAGENT "" 
+#define UAGENT "Mozilla/5.0" 
 #define ACCEPT "*/*"
-#define CONN "keep-alive"
+//#define CONN "keep-alive"
+#define CONN "Close"
 
 #define DEBUG
 

@@ -23,24 +23,33 @@ class URL {
 	public:
 		URL() 
 		{
-			Host = "";
-			Port = 0;
-			File = "";
-			Fname = "";
+			Host     = "";
+			Port     = 0;
+			File     = "";
+            FileType = "";
+			Fname    = "";
 		}
-		void SetHost(const string& host) { Host = host; }
+		void   SetHost(const string& host) { Host = host; }
 		string GetHost() { return Host; }
-		void SetPort(int port) { Port = port; }
-		int GetPort() { return Port; }
-		void SetFile(const string& file) { File = file; }
+
+		void   SetPort(int port) { Port = port; }
+		int    GetPort() { return Port; }
+
+		void   SetFile(const string& file) { File = file; }
 		string GetFile() { return File; }
-		void SetFname(const string& fname) { Fname = fname; }
+
+		void   SetFileType(const string& fileType) { FileType = fileType; }
+		string GetFileType() { return FileType; }
+
+		void   SetFname(const string& fname) { Fname = fname; }
 		string GetFname() { return Fname; }
+
 		~URL() {}
 	private:
 		string Host;
 		int Port;
 		string File;
+        string FileType;
 		string Fname;
 };
 
