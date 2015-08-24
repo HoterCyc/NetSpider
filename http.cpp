@@ -177,7 +177,7 @@ int read_and_parse_header(int sockfd)
     char ch[2];
     int  n;
     int  retrytimes = 0;
-    int  content_length = -1;
+    int  content_length = 0;
     bool resp_success = false; 
 
     while(1)
@@ -208,10 +208,11 @@ int read_and_parse_header(int sockfd)
 #ifdef DEBUG
         PRINT(line_buf);
 #endif
-        if (strcmp(line_buf, "\r\n") == 0)
+        if (strcmp(line_buf, "\r\n") == 0 || strcmp(line_buf, "\n") == 0)
             break;
 
         if (strcmp("HTTP/1.1 200 OK\r\n", line_buf) == 0 ||
+            strcmp("HTTP/1.1 302 Moved Temporarily\r\n", line_buf) == 0 ||
             strcmp("HTTP/1.1 301 Moved Permanently\r\n", line_buf) == 0)
             resp_success = true;
 
@@ -292,7 +293,7 @@ void* GetResponse(void *argument)
 
             //printf("xxxx: %d %d %d\n", n, recv_len, strlen(tmp));
             // complete  
-            if (recv_len >= content_length)
+            if (content_length != 0 && recv_len >= content_length)
                 break;
 		}
 	}
@@ -324,7 +325,7 @@ void* GetResponse(void *argument)
 	}
     else 
     {
-        write(fd, tmp, content_length);
+        write(fd, tmp, recv_len);
         close(fd);	
     }
 
@@ -333,7 +334,7 @@ NEXT:
 	pthread_mutex_lock(&connlock);
 	pending--;
     
-    if (content_length > 0)
+    if (recv_len > 0)
     {
         cnt++;
         // print debug infomation

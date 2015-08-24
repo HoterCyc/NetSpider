@@ -107,6 +107,44 @@ void tolower(string& src)
 			src[i] = src[i]-'A' + 'a';
 }
 
+/* get_url(string &src, int start_pos)
+ * get the first url from the src context
+ */
+
+string get_url(string& src, int search_pos)
+{
+    int idx, start, end;
+    string flag; // should be "href" or "src
+    char ch_flag; // should be ' or "
+
+    int p1 = src.find_first_of("href", search_pos);
+    int p2 = src.find_first_of("src", search_pos);
+    
+    if (p1 < p2)
+    {
+        idx = p1;
+        flag = string("href");
+    }
+    else
+    {
+        idx = p2;
+        flag = string("src");
+    }
+
+    if (idx == string::npos) // string::npos == -1
+        return "";
+
+    while (src[idx] != '\'' && src[idx] != '\"') idx++; // url is surrounded by ' or "
+    start = idx;
+    ch_flag = src[idx];
+
+    idx++;
+    while (src[idx] != ch_flag) idx++;
+    end = idx;
+    
+    return string(src, start, end-start+1);
+}
+
 /* Analyse()
  * analyse the Web Page which has fetched
  * in the function, we will get all fitted url and insert into
@@ -120,7 +158,10 @@ void Analyse(string& src)
 	URL url_t;
 	string str;
 	
-	/* search every url with prefix 'href' */
+	/* <link href = "">
+     * <img  src  = "">
+     * <a    href = ""> 
+     */
 
 	while((p = src.find("href", p)) != string::npos) 
 	{
