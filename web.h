@@ -20,37 +20,37 @@ using namespace std;
  */
 
 class URL {
-	public:
-		URL() 
-		{
-			Host     = "";
-			Port     = 0;
-			File     = "";
+    public:
+        URL() 
+        {
+            Host     = "";
+            Port     = 0;
+            File     = "";
             FileType = "";
-			Fname    = "";
-		}
-		void   SetHost(const string& host) { Host = host; }
-		string GetHost() { return Host; }
+            Fname    = "";
+        }
+        void   SetHost(const string& host) { Host = host; }
+        string GetHost() { return Host; }
 
-		void   SetPort(int port) { Port = port; }
-		int    GetPort() { return Port; }
+        void   SetPort(int port) { Port = port; }
+        int    GetPort() { return Port; }
 
-		void   SetFile(const string& file) { File = file; }
-		string GetFile() { return File; }
+        void   SetFile(const string& file) { File = file; }
+        string GetFile() { return File; }
 
-		void   SetFileType(const string& fileType) { FileType = fileType; }
-		string GetFileType() { return FileType; }
+        void   SetFileType(const string& fileType) { FileType = fileType; }
+        string GetFileType() { return FileType; }
 
-		void   SetFname(const string& fname) { Fname = fname; }
-		string GetFname() { return Fname; }
+        void   SetFname(const string& fname) { Fname = fname; }
+        string GetFname() { return Fname; }
 
-		~URL() {}
-	private:
-		string Host;
-		int Port;
-		string File;
+        ~URL() {}
+    private:
+        string Host;
+        int Port;
+        string File;
         string FileType;
-		string Fname;
+        string Fname;
 };
 
 unsigned int hash(const char *);

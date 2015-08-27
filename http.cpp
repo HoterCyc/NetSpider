@@ -27,12 +27,12 @@ struct hostent *Host;
 
 int GetHostByName(const string& hname)
 {
-	if((Host = gethostbyname(hname.c_str())) == NULL)
-	{
-		return -1;
-	}
+    if((Host = gethostbyname(hname.c_str())) == NULL)
+    {
+        return -1;
+    }
 
-	return 0;
+    return 0;
 }
 
 /* SetNoblocking()
@@ -41,20 +41,20 @@ int GetHostByName(const string& hname)
 
 int SetNoblocking(const int& sockfd)
 {
-	int opts = fcntl(sockfd, F_GETFL);
-	
-	if (opts < 0) 
-	{
-		return -1;
-	}
-	
-	// set nonblocking
-	opts |= O_NONBLOCK;
-	
-	if (fcntl(sockfd, F_SETFL, opts) < 0) 
-	{
-		return -1;
-	}
+    int opts = fcntl(sockfd, F_GETFL);
+    
+    if (opts < 0) 
+    {
+        return -1;
+    }
+    
+    // set nonblocking
+    opts |= O_NONBLOCK;
+    
+    if (fcntl(sockfd, F_SETFL, opts) < 0) 
+    {
+        return -1;
+    }
 
     return 0;
 }
@@ -66,36 +66,36 @@ int SetNoblocking(const int& sockfd)
 
 int ConnectWeb(int& sockfd)
 {
-	struct sockaddr_in server_addr;
+    struct sockaddr_in server_addr;
 
-	// create socket
-	if((sockfd = socket(PF_INET, SOCK_STREAM, 0)) == -1) 
-		return -1;
+    // create socket
+    if((sockfd = socket(PF_INET, SOCK_STREAM, 0)) == -1) 
+        return -1;
 
-	#ifdef DEBUG
+    #ifdef DEBUG
         //PRINT("create socket success");
-	#endif
-	
-	// initialize server_addr
-	bzero(&server_addr, sizeof(server_addr));
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_port = htons(80);
-	server_addr.sin_addr = *((struct in_addr *)Host->h_addr);
-	
-	// connect to host
-	if(connect(sockfd, (struct sockaddr *)(&server_addr), sizeof(struct sockaddr)) == -1)
-	{
-		perror("connect error");
-		return -1;
-	}
+    #endif
+    
+    // initialize server_addr
+    bzero(&server_addr, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(80);
+    server_addr.sin_addr = *((struct in_addr *)Host->h_addr);
+    
+    // connect to host
+    if(connect(sockfd, (struct sockaddr *)(&server_addr), sizeof(struct sockaddr)) == -1)
+    {
+        perror("connect error");
+        return -1;
+    }
 
-	#ifdef DEBUG
-		//PRINT("connect socket success");
-	#endif
-	
-	pthread_mutex_lock(&connlock);
-	pending++;
-	pthread_mutex_unlock(&connlock);
+    #ifdef DEBUG
+        //PRINT("connect socket success");
+    #endif
+    
+    pthread_mutex_lock(&connlock);
+    pending++;
+    pthread_mutex_unlock(&connlock);
 
     return 0;
 }
@@ -107,11 +107,11 @@ int ConnectWeb(int& sockfd)
 
 int SendRequest(int sockfd, URL& url_t)
 {
-	// initialize request
-	string request;
+    // initialize request
+    string request;
     string url = "http://" + url_t.GetHost() + url_t.GetFile();
     //string url = "http://www.baidu.com/more";
-	string Uagent = UAGENT;
+    string Uagent = UAGENT;
     string Conn = CONN;
     string Accept = ACCEPT;
 
@@ -127,24 +127,24 @@ int SendRequest(int sockfd, URL& url_t)
     //sprintf(req, "%s %s HTTP/1.1\r\nAccept: %s\r\nHost: %s\r\nConnection: %s\r\n\r\n", 
     //                           "GET", "http://www.baidu.com/more/", "html/text", "www.baidu.com", "Close"); 
     //request = string(req);
-	#ifdef DEBUG
+    #ifdef DEBUG
         const char *info = request.c_str();
         PRINT(info);
-	#endif
+    #endif
   
-	// write(send request)
-	int d, total = request.length(), send = 0;
+    // write(send request)
+    int d, total = request.length(), send = 0;
 
-	while(send < total)
-	{
-		if((d = write(sockfd, request.c_str()+send, total-send)) < 0) 
-			return -1;
-		send += d;
-	}
+    while(send < total)
+    {
+        if((d = write(sockfd, request.c_str()+send, total-send)) < 0) 
+            return -1;
+        send += d;
+    }
 
-	#ifdef DEBUG
-		//PRINT("Req sent success");
-	#endif
+    #ifdef DEBUG
+        //PRINT("Req sent success");
+    #endif
 
     return 0;
 }
@@ -152,19 +152,19 @@ int SendRequest(int sockfd, URL& url_t)
 /* Calc_Time_Sec()
  * this function used to calculate the diffrent time between
  * two time. the time is based on struct timeval:
- *	struct timeval
- *	{
- *		__time_t tv_sec;        // Seconds.
- *		__suseconds_t tv_usec;    // Microseconds. 
- *	};
+ *  struct timeval
+ *  {
+ *      __time_t tv_sec;        // Seconds.
+ *      __suseconds_t tv_usec;    // Microseconds. 
+ *  };
  */
 
 double Calc_Time_Sec(struct timeval st, struct timeval ed)
 {
-	double sec = ed.tv_sec - st.tv_sec;
-	double usec = ed.tv_usec - st.tv_usec;
-	
-	return sec + usec/1000000;
+    double sec = ed.tv_sec - st.tv_sec;
+    double usec = ed.tv_usec - st.tv_usec;
+    
+    return sec + usec/1000000;
 }
 
 /* read_and_parse_header(sockfd)
@@ -231,24 +231,31 @@ int read_and_parse_header(int sockfd)
 
 void* GetResponse(void *argument)
 {
-	struct argument *arg = (struct argument *)argument; // receive the parameter
-	struct stat file_stat;                              // record the file information
-	int timeout = 0;
-	int flen;
-	int sockfd = arg->sockfd;
+    struct argument *arg = (struct argument *)argument; // receive the parameter
+    struct stat file_stat;                              // record the file information
+    int timeout = 0;
+    int flen;
+    int sockfd = arg->sockfd;
     int n, len, recv_len;
     int fd;
-	char buffer[1024];                                  // record read buffer from every read() operation
-	char tmp[MAXLEN]={0};                               // record the tmp Web Page
+    char buffer[1024];                                  // record read buffer from every read() operation
+    char tmp[MAXLEN]={0};                               // record the tmp Web Page
 
-	URL url_t = arg->url;
-	int content_length = read_and_parse_header(sockfd);
+    string html_content;
+    int write_len;
+
+    URL url_t = arg->url;
+    int content_length = read_and_parse_header(sockfd);
 
 #ifdef DEBUG
     char info[200];
     sprintf(info, "expected content_length: %d", content_length);
     PRINT(info);
 #endif
+
+    //
+    bool skip_flag = true;
+    recv_len = 0;
 
     // skip read the content since the GET request is failed
     if (content_length < 0)
@@ -257,47 +264,51 @@ void* GetResponse(void *argument)
         goto NEXT;
     }
 
-	// read size of len everytime from page context
-	len = sizeof(buffer) - 1;
-    recv_len = 0;
-
-	while(1) 
-	{
+    while(1) 
+    {
         // 0 indicate read complete
-		n = read(sockfd, buffer, len);
+        //len = skip_flag ? 1 : sizeof(buffer) - 1;
+        len = sizeof(buffer) - 1;
+        n = read(sockfd, buffer, len);
+
+        //if (skip_flag) // skip invalid characters in the head of html content
+        //{
+        //    if (buffer[0] == '<')
+        //        skip_flag = false;
+        //    else 
+        //        continue;
+        //}
 
         if (n == 0) // (TODO n will not = 0 when complete reading)
             break;
 
-		if(n < 0) 
-		{
-			if(errno == EAGAIN) 
-			{
+        if(n < 0) 
+        {
+            if(errno == EAGAIN) 
+            {
                 PRINT("warning: errno=EAGAIN");
-				sleep(1);
-				continue;
-			}
-			else 
-			{
-				perror("read");
+                sleep(1);
+                continue;
+            }
+            else 
+            {
+                perror("read");
                 close(sockfd);
-				goto NEXT;
-			}
-		}
-		else 
-		{
-			sum_byte += n; // for summery
+                goto NEXT;
+            }
+        }
+        else 
+        {
+            sum_byte += n; // for summery
             memcpy(tmp+recv_len, buffer, n);
             recv_len += n;
-			//strncat(tmp, buffer, n);
 
-            //printf("xxxx: %d %d %d\n", n, recv_len, strlen(tmp));
             // complete  
             if (content_length != 0 && recv_len >= content_length)
                 break;
-		}
-	}
-	close(sockfd); // attention: do not forget close sockfd.
+        }
+    }
+    close(sockfd); // attention: do not forget close sockfd.
 
 #ifdef DEBUG
     sprintf(info, "received content_length: %d", recv_len);
@@ -307,32 +318,56 @@ void* GetResponse(void *argument)
     if (recv_len < content_length)
         goto NEXT;
 
+    html_content = string(tmp);
+    write_len = recv_len;
+
     if (url_t.GetFileType() == "" || 
         url_t.GetFileType() == ".html" ||
         url_t.GetFileType() == ".htm")
     {
-        string html_content = string(tmp);
+        html_content.resize(html_content.capacity(), '\0');
         Analyse(html_content);
+        write_len = html_content.length();
     }
 
-	chdir("Pages");
-	fd = open(url_t.GetFname().c_str(), O_CREAT|O_EXCL|O_RDWR, 00770);
+    chdir("Pages");
+    fd = open(url_t.GetFname().c_str(), O_CREAT|O_EXCL|O_RDWR, 00770);
 
-	if (fd < 0 && errno != EEXIST)
-	{
-        //stat(url_t.GetFname().c_str(), &file_stat);
-        perror("file open error");
-	}
-    else 
+    if (fd < 0)
     {
-        write(fd, tmp, recv_len);
-        close(fd);	
+        if (errno == EEXIST)
+        {
+            stat(url_t.GetFname().c_str(), &file_stat);
+            if (write_len > file_stat.st_size)
+            {
+                fd = open(url_t.GetFname().c_str(), O_RDWR|O_TRUNC, 00770); // re-write
+                if (fd < 0)
+                {
+                    perror("file open error");
+                    close(fd);
+                    goto NEXT;
+                }
+            }
+            else
+            {
+                close(fd);
+                goto NEXT;
+            }
+        }
+        else
+        {
+            perror("file open error");
+            close(fd);
+            goto NEXT;
+        }
     }
+    write(fd, tmp, write_len);
+    close(fd);  
 
 NEXT:
 
-	pthread_mutex_lock(&connlock);
-	pending--;
+    pthread_mutex_lock(&connlock);
+    pending--;
     
     if (recv_len > 0)
     {
@@ -341,70 +376,70 @@ NEXT:
         printf("S:%-6.2fKB  I:%-5dP:%-5dC:%-5d", recv_len/1024.0, que.size(), pending, cnt);
         printf("Fetch: [%s] -> [%s]\n", url_t.GetFile().c_str(), url_t.GetFname().c_str());
     }
-	
-	pthread_mutex_unlock(&connlock);
+    
+    pthread_mutex_unlock(&connlock);
 
-	// judge how many new url in wait-queue can pop()
-	if (pending <= 30)
-		n = 5;
-	else 
-		n = 1;	
+    // judge how many new url in wait-queue can pop()
+    if (pending <= 30)
+        n = 5;
+    else 
+        n = 1;  
 
-	for(int i=0; i<n; i++) 
-	{
-		if(que.empty()) 
-		{
+    for(int i=0; i<n; i++) 
+    {
+        if(que.empty()) 
+        {
             // we think the first url is more import, so give it more time to fetch
-			if(is_first_url) 
-			{
-				is_first_url = false;
-				sleep(1);
-				continue;
-			}
-			else 
-				break;
-		}
-		pthread_mutex_lock(&quelock);
-		URL url_t = que.front();
-		que.pop();
-		pthread_mutex_unlock(&quelock);
-		
-		int sockfd;
-		timeout = 0;
+            if(is_first_url) 
+            {
+                is_first_url = false;
+                sleep(1);
+                continue;
+            }
+            else 
+                break;
+        }
+        pthread_mutex_lock(&quelock);
+        URL url_t = que.front();
+        que.pop();
+        pthread_mutex_unlock(&quelock);
+        
+        int sockfd;
+        timeout = 0;
 
         // connect to web 
-		while(ConnectWeb(sockfd) < 0 && timeout < 10) 
-			timeout++;
+        while(ConnectWeb(sockfd) < 0 && timeout < 10) 
+            timeout++;
 
         if(timeout>=10) 
         {
             perror("create socket");
             return NULL;
         }
-		
+        
         // setnoblock
-		if(SetNoblocking(sockfd) < 0) 
-		{
-			perror("setnoblock");
-			return NULL;
-		}
+        if(SetNoblocking(sockfd) < 0) 
+        {
+            perror("setnoblock");
+            return NULL;
+        }
 
         // sendrequest
-		if(SendRequest(sockfd, url_t) < 0) 
-		{
-			perror("sendrequest");
-			return NULL;
-		}
-		
-		struct argument *arg=new struct argument;
-		struct epoll_event ev;
-		arg->url = url_t;
-		arg->sockfd = sockfd;
-		ev.data.ptr = arg;
-		ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
-		
-		epoll_ctl(epfd, EPOLL_CTL_ADD, sockfd, &ev);
-	}
+        if(SendRequest(sockfd, url_t) < 0) 
+        {
+            perror("sendrequest");
+            return NULL;
+        }
+        
+        struct argument *arg=new struct argument;
+        struct epoll_event ev;
+        arg->url = url_t;
+        arg->sockfd = sockfd;
+        ev.data.ptr = arg;
+        ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
+        
+        epoll_ctl(epfd, EPOLL_CTL_ADD, sockfd, &ev);
+    }
 
-	pthread_exit(NULL);
+    pthread_exit(NULL);
 }

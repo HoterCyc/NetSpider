@@ -15,12 +15,12 @@
 
 void init()
 {
-	cnt = 0;
-	sum_byte = 0;
-	pending = 0;
-	is_first_url = true;
-	input = START_URL;
-	keyword = KEYWORD;
+    cnt = 0;
+    sum_byte = 0;
+    pending = 0;
+    is_first_url = true;
+    input = START_URL;
+    keyword = KEYWORD;
     time_used = 0;
 }
 
@@ -35,7 +35,7 @@ void Usage()
     printf("-n    --nurl    set the number of url you want to get.          default    INF\n");
     printf("-u    --url     set the first url you want to start fetch.      default    \"\"\n");
     printf("-k    --key     set the key word of the url to fetch web pages. default    \"\"\n");
-	printf("-t    --timeout set timeout for epoll(waitque is empty).        default    20\n");
+    printf("-t    --timeout set timeout for epoll(waitque is empty).        default    20\n");
     printf("\nexample\n");
     printf("./spider -h\n");
     printf("./spider -n 1000 -u http://hi.baidu.com/xxx -k xxx\n");
@@ -66,13 +66,13 @@ int Parse(int argc, char **argv)
             case 'k':
                 KEYWORD = string(optarg);
                 break;
-			case 't':
-				TIMEOUT = atoi(optarg);
-				break;
+            case 't':
+                TIMEOUT = atoi(optarg);
+                break;
             default:
                 return -1;
         }
-		ret ++;
+        ret ++;
     }
     return ret;
 }
@@ -84,69 +84,69 @@ int Parse(int argc, char **argv)
 
 void generator()
 {
-	int retry_wait_times = 0;
-	while(1) 
-	{
+    int retry_wait_times = 0;
+    while(1) 
+    {
         // max num of url we want to fetch
         if(cnt>=MAX_URL) 
             break;
 
         // int epoll_wait(int epfd, struct epoll_event * events, int maxevents, int timeout);
-		int n = epoll_wait(epfd, events, 30, 2000);
-		
+        int n = epoll_wait(epfd, events, 30, 2000);
+        
         // set retry_wait_times 
-		if(retry_wait_times >= TIMEOUT) 
-		{
+        if(retry_wait_times >= TIMEOUT) 
+        {
             char info[200];
-			sprintf(info, "wait time out for retry %d times\n", TIMEOUT);
+            sprintf(info, "wait time out for retry %d times\n", TIMEOUT);
             PRINT(info);
-			break;
-		}
-		if(n<0) 
-		{
-			perror("epoll_wait_error");
-			break;
-		}
-		else if(n==0 && que.empty()) 
-		{
-			retry_wait_times++;
-			continue;
-		}
-		retry_wait_times = 0;
-		
-		// create pthread for every event and call GetResponse().
-		for(int i=0; i<n; i++) 
-		{
-			struct argument* arg = (struct argument*)events[i].data.ptr;
-			
-			pthread_attr_t pAttr;
-			pthread_t      thread;
-		
-			pthread_attr_init(&pAttr);										// initialize pthread attribute
-			pthread_attr_setstacksize(&pAttr, 8 * 1024 * 1024);				// 1M stack size
-			pthread_attr_setdetachstate(&pAttr, PTHREAD_CREATE_DETACHED);	// or JOINABLE
+            break;
+        }
+        if(n<0) 
+        {
+            perror("epoll_wait_error");
+            break;
+        }
+        else if(n==0 && que.empty()) 
+        {
+            retry_wait_times++;
+            continue;
+        }
+        retry_wait_times = 0;
+        
+        // create pthread for every event and call GetResponse().
+        for(int i=0; i<n; i++) 
+        {
+            struct argument* arg = (struct argument*)events[i].data.ptr;
+            
+            pthread_attr_t pAttr;
+            pthread_t      thread;
+        
+            pthread_attr_init(&pAttr);                                      // initialize pthread attribute
+            pthread_attr_setstacksize(&pAttr, 8 * 1024 * 1024);             // 1M stack size
+            pthread_attr_setdetachstate(&pAttr, PTHREAD_CREATE_DETACHED);   // or JOINABLE
 
-			int pid = pthread_create(&thread, &pAttr, GetResponse, arg);
+            int pid = pthread_create(&thread, &pAttr, GetResponse, arg);
 
-			if(pid != 0 ) 
-			{
-				perror("create thread");
+            if(pid != 0 ) 
+            {
+                perror("create thread");
                 pthread_attr_destroy(&pAttr);
-				continue;
-			}
-			pthread_attr_destroy(&pAttr);
+                continue;
+            }
+            pthread_attr_destroy(&pAttr);
 
-			struct epoll_event ev;
-		    
-			// delete used event with sockfd = arg->sockfd.
-			if(epoll_ctl(epfd, EPOLL_CTL_DEL, arg->sockfd, &ev) == -1) 
-			{
-				epoll_ctl(epfd, EPOLL_CTL_MOD, arg->sockfd, &ev);
-				perror("epoll_ctl_del");
-				continue;
-			}
-		}
-	}
+            struct epoll_event ev;
+            
+            // delete used event with sockfd = arg->sockfd.
+            if(epoll_ctl(epfd, EPOLL_CTL_DEL, arg->sockfd, &ev) == -1) 
+            {
+                epoll_ctl(epfd, EPOLL_CTL_MOD, arg->sockfd, &ev);
+                perror("epoll_ctl_del");
+                continue;
+            }
+        }
+    }
 }
 
 /* start_run()
@@ -156,63 +156,63 @@ void generator()
 void start_run()
 {
     // create epoll fd(epfd) with maximum events 50
-	epfd = epoll_create(50);
+    epfd = epoll_create(50);
 
-	int n = (que.size()>=30) ? 30 : que.size();
+    int n = (que.size()>=30) ? 30 : que.size();
 
-	for(int i=0; i<n; i++) // foreach url we want fetch
-	{
-		pthread_mutex_lock(&quelock);
-		URL url_t = que.front();
-		que.pop();
-		pthread_mutex_unlock(&quelock);
-		
-		int sockfd;
-		
-		// connect to web
-		int retry_conn_times = 0;
-		while(ConnectWeb(sockfd) < 0 && retry_conn_times < 10) 
-			retry_conn_times++;
+    for(int i=0; i<n; i++) // foreach url we want fetch
+    {
+        pthread_mutex_lock(&quelock);
+        URL url_t = que.front();
+        que.pop();
+        pthread_mutex_unlock(&quelock);
+        
+        int sockfd;
+        
+        // connect to web
+        int retry_conn_times = 0;
+        while(ConnectWeb(sockfd) < 0 && retry_conn_times < 10) 
+            retry_conn_times++;
 
-		if(retry_conn_times >= 10) 
-		{
-			perror("create socket");
-			exit(1);
-		}
-		
-		// setnoblock
-		if(SetNoblocking(sockfd) < 0) 
-		{
-			perror("setnoblock");
-			exit(1);
-		}
-		
-		// sendrequest
-		if(SendRequest(sockfd, url_t) < 0) 
-		{
-			perror("sendrequest");
-			exit(1);
-		}
-		
+        if(retry_conn_times >= 10) 
+        {
+            perror("create socket");
+            exit(1);
+        }
+        
+        // setnoblock
+        if(SetNoblocking(sockfd) < 0) 
+        {
+            perror("setnoblock");
+            exit(1);
+        }
+        
+        // sendrequest
+        if(SendRequest(sockfd, url_t) < 0) 
+        {
+            perror("sendrequest");
+            exit(1);
+        }
+        
         // initialize argument that the event want to pass to called function
-		struct argument *arg=new struct argument;
-		struct epoll_event ev;
-		arg->url = url_t;
-		arg->sockfd = sockfd;
-		ev.data.ptr = arg;
-		ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
+        struct argument *arg=new struct argument;
+        struct epoll_event ev;
+        arg->url = url_t;
+        arg->sockfd = sockfd;
+        ev.data.ptr = arg;
+        ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
 
         // int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event);
         // enroll event by EPOLL_CTL_ADD mode
-		if(epoll_ctl(epfd, EPOLL_CTL_ADD, sockfd, &ev) == -1) 
-		{ 
-			perror("epoll_ctl_add");
-			exit(1);
-		}
-	}
+        if(epoll_ctl(epfd, EPOLL_CTL_ADD, sockfd, &ev) == -1) 
+        { 
+            perror("epoll_ctl_add");
+            exit(1);
+        }
+    }
 
     generator(); // handle response
-	close(epfd);
+    close(epfd);
 }
 
 /* summery(timeval t_st, timeval t_ed)
@@ -262,49 +262,49 @@ int main(int argc, char **argv)
         printf("command argument error!\n");
         Usage();
         exit(1);
-	} 
-	else if(rec == -2) 
-	{
-		Usage();
-		exit(1);
-	}
+    } 
+    else if(rec == -2) 
+    {
+        Usage();
+        exit(1);
+    }
 
     // 2. prepare for first url
-	init();
-	
-	// get normalize of the first url(url).
-	if(SetUrl(url, input) < 0) 
-		puts("input url error");
-	
-	// get host by name(do only once in the whole program)
-	if(GetHostByName(url.GetHost()) < 0)
-	 {
-		printf("gethostbyname error\n");
-		exit(1);
-	}
-	
+    init();
+    
+    // get normalize of the first url(url).
+    if(SetUrl(url, input) < 0) 
+        puts("input url error");
+    
+    // get host by name(do only once in the whole program)
+    if(GetHostByName(url.GetHost()) < 0)
+     {
+        printf("gethostbyname error\n");
+        exit(1);
+    }
+    
     // use hash value for html page
-	unsigned int hashVal = hash(url.GetFile().c_str());
-	char tmp[31];
-	
-	sprintf(tmp, "%010u", hashVal);
-	url.SetFname(string(tmp)+url.GetFileType());
+    unsigned int hashVal = hash(url.GetFile().c_str());
+    char tmp[31];
+    
+    sprintf(tmp, "%010u", hashVal);
+    url.SetFname(string(tmp)+url.GetFileType());
 
 #ifdef DEBUG
     char info[120];
     sprintf(info, "Add queue: %s", url.GetFile().c_str());
     PRINT(info);
 #endif
-	que.push(url);
-		
-	pthread_mutex_lock(&setlock);
-	Set.insert(hashVal);
-	pthread_mutex_unlock(&setlock);
-	
+    que.push(url);
+        
+    pthread_mutex_lock(&setlock);
+    Set.insert(hashVal);
+    pthread_mutex_unlock(&setlock);
+    
     // 3. start
     struct timeval t_st, t_ed; // store time value. used to calculate avg-speed.
 
-	gettimeofday(&t_st, NULL);
+    gettimeofday(&t_st, NULL);
     start_run();
     gettimeofday(&t_ed, NULL);
 

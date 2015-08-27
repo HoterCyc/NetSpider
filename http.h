@@ -24,9 +24,9 @@ extern const int MAXLEN;//#include "config.h"
  */
 
 struct argument {
-	URL url;
-	int sockfd;
-	argument() {}
+    URL url;
+    int sockfd;
+    argument() {}
 };
 
 //typedef unsigned int uint

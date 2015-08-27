@@ -18,7 +18,7 @@ const struct option long_opt[] =
     {"nurl", 1, NULL, 'n'},
     {"url", 1, NULL, 'u'},
     {"key", 1, NULL, 'k'},
-	{"timeout", 1, NULL, 't'},
+    {"timeout", 1, NULL, 't'},
     {0, 0, 0, 0}
 };
 

@@ -37,63 +37,63 @@ unsigned int hash(const char *s)
  */
 
 int SetUrl(URL& url_t, string& url)
-{	
+{   
     int p;
-	string src(url);
+    string src(url);
 
     // invalid url
-	if(src.length() == 0 || src.find('#') != string::npos) 
+    if(src.length() == 0 || src.find('#') != string::npos) 
         return -1;
 
     // 1. initialize
-	int len = src.length();
-	//while(src[len-1] == '/') // remove the last chracter '/'s
-	//	src[--len] = '\0';
+    int len = src.length();
+    //while(src[len-1] == '/') // remove the last chracter '/'s
+    //  src[--len] = '\0';
 
     // rm characters after '?'
     if ((p = src.find_first_of('?')) != string::npos)
         src[p] = '\0';
-	
-	// check whether src start with "http://"
-	if(src.compare(0, 7, "http://") == 0) 
+    
+    // check whether src start with "http://"
+    if(src.compare(0, 7, "http://") == 0) 
         src = src.assign(src, 7, len);
-	
-	/* 2. set url's host, port*/
-	if((p = src.find_first_of(':')) != string::npos) // explicit port number
-	{
-		url_t.SetHost(string(src, 0, p));
-		
-		int c = p+1, port = 0, len_src = src.length();
-
-		while(isdigit(src[c]) && c<len_src)
-			port = port*10 + src[c++] - '0';
-		url_t.SetPort(port);
-		src = string(src, c, src.length());
-	}
-	else // implicit port number
-	{
-		if((p = src.find_first_of('/')) != string::npos) 
-		{
-			url_t.SetHost(string(src, 0, p));
-			src = string(src, p, src.length());
-		}
-		else 
-			url_t.SetHost(src);
-		url_t.SetPort(80);
-	}
-	
-	/* 3. set url's file && fileType*/
-	if((p = src.find_first_of('/')) != string::npos) 
+    
+    /* 2. set url's host, port*/
+    if((p = src.find_first_of(':')) != string::npos) // explicit port number
     {
-		url_t.SetFile(src);
+        url_t.SetHost(string(src, 0, p));
+        
+        int c = p+1, port = 0, len_src = src.length();
+
+        while(isdigit(src[c]) && c<len_src)
+            port = port*10 + src[c++] - '0';
+        url_t.SetPort(port);
+        src = string(src, c, src.length());
+    }
+    else // implicit port number
+    {
+        if((p = src.find_first_of('/')) != string::npos) 
+        {
+            url_t.SetHost(string(src, 0, p));
+            src = string(src, p, src.length());
+        }
+        else 
+            url_t.SetHost(src);
+        url_t.SetPort(80);
+    }
+    
+    /* 3. set url's file && fileType*/
+    if((p = src.find_first_of('/')) != string::npos) 
+    {
+        url_t.SetFile(src);
         if((p = src.find_first_of('.')) != string::npos) 
             url_t.SetFileType(src.substr(p));
 
     }
-	else 
-		url_t.SetFile("/");
-	
-	return 0;
+    else 
+        url_t.SetFile("/");
+    
+    return 0;
 }
 
 /* tolower() 
@@ -102,47 +102,44 @@ int SetUrl(URL& url_t, string& url)
 
 void tolower(string& src)
 {
-	for(int i=0; src[i]; i++)
-		if(src[i]>='A' && src[i]<='Z')
-			src[i] = src[i]-'A' + 'a';
+    for(int i=0; src[i]; i++)
+        if(src[i]>='A' && src[i]<='Z')
+            src[i] = src[i]-'A' + 'a';
 }
 
-/* get_url(string &src, int start_pos)
+/* get_url()
  * get the first url from the src context
  */
 
-string get_url(string& src, int search_pos)
+string get_url(string& src, int search_pos, int& insert_start_pos, int& insert_end_pos)
 {
-    int idx, start, end;
+    int idx;
     string flag; // should be "href" or "src
     char ch_flag; // should be ' or "
 
-    int p1 = src.find_first_of("href", search_pos);
-    int p2 = src.find_first_of("src", search_pos);
+    int p1 = src.find(" href", search_pos);
+    int p2 = src.find(" src", search_pos);
     
-    if (p1 < p2)
-    {
-        idx = p1;
-        flag = string("href");
-    }
-    else
-    {
-        idx = p2;
-        flag = string("src");
-    }
-
-    if (idx == string::npos) // string::npos == -1
+    // set correct idx
+    if ((p1 != string::npos) && (p2 != string::npos))
+        idx = (p1 < p2) ? p1 : p2;
+    else if ((p1 == string::npos) && (p2 == string::npos))
         return "";
+    else if (p1 != string::npos)
+        idx = p1;
+    else
+        idx = p2;
 
     while (src[idx] != '\'' && src[idx] != '\"') idx++; // url is surrounded by ' or "
-    start = idx;
+    insert_start_pos = idx+1;
     ch_flag = src[idx];
 
     idx++;
     while (src[idx] != ch_flag) idx++;
-    end = idx;
+    insert_end_pos = idx-1;
     
-    return string(src, start, end-start+1);
+    //printf("%d %d %d %d %d\n", p1, p2, insert_start_pos, insert_end_pos, src.length());
+    return string(src, insert_start_pos, insert_end_pos-insert_start_pos+1);
 }
 
 /* Analyse()
@@ -153,96 +150,71 @@ string get_url(string& src, int search_pos)
 
 void Analyse(string& src)
 {
-	int p=0, p1, p2; // p is the anchor of searching
-	int flag;
-	URL url_t;
-	string str;
-	
-	/* <link href = "">
-     * <img  src  = "">
-     * <a    href = ""> 
-     */
+    int p = 0, insert_start_pos, insert_end_pos; // p is the anchor of searching
+    URL url_t;
+    string str = "";
+    
+    while ((str = get_url(src, p, insert_start_pos, insert_end_pos)) != "") 
+    {
+        p = insert_end_pos;
 
-	while((p = src.find("href", p)) != string::npos) 
-	{
-        int pp = p+4;
-        while(src[pp] == ' ') 
-            pp++;
-
-        if(src[pp] != '=')
-        {
-            p++;
+#ifdef DEBUG
+        //PRINT(str.c_str());
+#endif
+        // judge whether contains keyword
+        if(keyword != "" && str.find(keyword) == string::npos)
             continue;
-        }
         else 
         {
-            p = pp;
-            p1 = pp+1;
-        }
-
-		// url can be surrounded by '\"', '\''
-		while(src[p1] == ' ') 
-			p1++;
-
-		char ch = src[p1];
-        if (ch != '\'' && ch != '\"')
-            continue;
-
-        p1++;
-        p2 = src.find_first_of(ch, p1);
-
-		// judge whether contains keyword
-		str = string(src, p1, p2-p1);
-		
-		if(keyword != "" && str.find(keyword) == string::npos)
-			continue;
-		else 
-		{
-			// judge whether contains '//'
-			if(str.find("//") != string::npos)
-			{
+            // judge whether contains '//'
+            if(str.find("//") != string::npos)
+            {
                 if (str.find(url.GetHost()) == string::npos)
                     continue;  // Host inconsistent
 
                 if (str.find("http:") == string::npos)
                     str.insert(0, "http:");
-			}
+            }
             else
             {
                 str.insert(0, "http://"+url.GetHost());
             }
 
-			if(SetUrl(url_t, str) < 0) 
-				continue;
-		}
+            if(SetUrl(url_t, str) < 0) 
+                continue;
+        }
 
-		//#ifdef DEBUG
-		//	cout<<p<<" "<<p1<<" "<<p2<<" "<<url_t.GetFile()<<endl;
-		//#endif
-		
-		// modify the set(Set)
-		unsigned int hashVal = hash(url_t.GetFile().c_str());
-		char tmp[31]; 
+        //#ifdef DEBUG
+        //  cout<<p<<" "<<p1<<" "<<p2<<" "<<url_t.GetFile()<<endl;
+        //#endif
+        
+        // modify the set(Set)
+        unsigned int hashVal = hash(url_t.GetFile().c_str());
+        char tmp[31]; 
 
-		sprintf(tmp, "%010u", hashVal);
-		// judge whether has fetched
-		if(Set.find(hashVal) == Set.end()) 
-		{ 
-			pthread_mutex_lock(&setlock);
-			Set.insert(hashVal);
-			pthread_mutex_unlock(&setlock);
-			url_t.SetFname(string(tmp) + url_t.GetFileType());
-			pthread_mutex_lock(&quelock);
+        sprintf(tmp, "%010u", hashVal);
+        // judge whether has fetched
+        if(Set.find(hashVal) == Set.end()) 
+        { 
+            pthread_mutex_lock(&setlock);
+            Set.insert(hashVal);
+            pthread_mutex_unlock(&setlock);
+            url_t.SetFname(string(tmp) + url_t.GetFileType());
+            pthread_mutex_lock(&quelock);
 #ifdef DEBUG
-            char info[120];
-            sprintf(info, "Add queue: %s", url_t.GetFile().c_str());
+            char info[250];
+            sprintf(info, "%-5dAdd queue: %s", que.size(), url_t.GetFile().c_str());
             PRINT(info);
 #endif
-			que.push(url_t);
-			pthread_mutex_unlock(&quelock);
-			
-		}
-		src.insert(p1-1, "\"" + string(tmp) + url_t.GetFileType() + "\" ");
-	}
+            que.push(url_t);
+            pthread_mutex_unlock(&quelock);
+            
+        }
+        string insert("\"" + string(tmp) + url_t.GetFileType() + "\" ");
+        src.replace(insert_start_pos, insert_end_pos-insert_start_pos+1, insert);
+
+        p = insert_start_pos + insert.length();
+    }
+    return;
 }
 
