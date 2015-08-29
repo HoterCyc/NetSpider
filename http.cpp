@@ -115,8 +115,6 @@ int SendRequest(int sockfd, URL& url_t)
     string Conn = CONN;
     string Accept = ACCEPT;
 
-    cout << url << endl;
-
     request = "GET " + url + " HTTP/1.1\r\n" +
               "Host: " + url_t.GetHost() + "\r\n" +
               "User-Agent: " + Uagent + "\r\n" +
@@ -167,11 +165,29 @@ double Calc_Time_Sec(struct timeval st, struct timeval ed)
     return sec + usec/1000000;
 }
 
+/* get_content_type()
+ * return html type
+ * */
+
+void get_content_type(string content, string& html_type)
+{
+    if (content.find("text/html") != string::npos ||
+        content.find("text/css") != string::npos)
+        html_type = "text";
+    else if (content.find("image") != string::npos)
+        html_type = "image";
+    else
+        html_type = "unknown";
+}
+
 /* read_and_parse_header(sockfd)
  * parse HTML header and return content length
+ * return: -1: invalid html
+ *          0: unknown length
+ *          _: html length
  */
 
-int read_and_parse_header(int sockfd)
+int read_and_parse_header(int sockfd, string& html_type)
 {
     char line_buf[255];
     char ch[2];
@@ -206,7 +222,7 @@ int read_and_parse_header(int sockfd)
         }
 
 #ifdef DEBUG
-        PRINT(line_buf);
+        //PRINT(line_buf);
 #endif
         if (strcmp(line_buf, "\r\n") == 0 || strcmp(line_buf, "\n") == 0)
             break;
@@ -218,9 +234,16 @@ int read_and_parse_header(int sockfd)
 
         if (strncmp("Content-Length", line_buf, 14) == 0)
             sscanf(line_buf, "Content-Length: %d", &content_length);
+
+        if (strncmp("Content-Type", line_buf, 12) == 0)
+            get_content_type(line_buf, html_type);
     }
 
-    return (resp_success == true) ? content_length : -1;
+    if ((resp_success == true) &&
+        (html_type == "text" || html_type == "image"))
+        return content_length;
+
+    return -1;
 }
 
 /* GetResponse()
@@ -242,10 +265,11 @@ void* GetResponse(void *argument)
     char tmp[MAXLEN]={0};                               // record the tmp Web Page
 
     string html_content;
+    string html_type;
     int write_len;
 
     URL url_t = arg->url;
-    int content_length = read_and_parse_header(sockfd);
+    int content_length = read_and_parse_header(sockfd, html_type);
 
 #ifdef DEBUG
     char info[200];
@@ -254,7 +278,7 @@ void* GetResponse(void *argument)
 #endif
 
     //
-    bool skip_flag = true;
+    bool skip_flag = (html_type == "text");
     recv_len = 0;
 
     // skip read the content since the GET request is failed
@@ -264,20 +288,19 @@ void* GetResponse(void *argument)
         goto NEXT;
     }
 
-    while(1) 
+    while (true) 
     {
-        // 0 indicate read complete
-        //len = skip_flag ? 1 : sizeof(buffer) - 1;
-        len = sizeof(buffer) - 1;
+        len = skip_flag ? 1 : sizeof(buffer) - 1;
+        //len = sizeof(buffer) - 1;
         n = read(sockfd, buffer, len);
 
-        //if (skip_flag) // skip invalid characters in the head of html content
-        //{
-        //    if (buffer[0] == '<')
-        //        skip_flag = false;
-        //    else 
-        //        continue;
-        //}
+        if (skip_flag) // skip invalid characters in the head of html content
+        {
+            if (buffer[0] == '<')
+                skip_flag = false;
+            else 
+                continue;
+        }
 
         if (n == 0) // (TODO n will not = 0 when complete reading)
             break;
@@ -321,11 +344,9 @@ void* GetResponse(void *argument)
     html_content = string(tmp);
     write_len = recv_len;
 
-    if (url_t.GetFileType() == "" || 
-        url_t.GetFileType() == ".html" ||
-        url_t.GetFileType() == ".htm")
+    if (html_type == "text")
     {
-        html_content.resize(html_content.capacity(), '\0');
+        html_content.reserve(MAXLEN);
         Analyse(html_content);
         write_len = html_content.length();
     }
@@ -361,7 +382,7 @@ void* GetResponse(void *argument)
             goto NEXT;
         }
     }
-    write(fd, tmp, write_len);
+    write(fd, html_content.c_str(), write_len);
     close(fd);  
 
 NEXT:
