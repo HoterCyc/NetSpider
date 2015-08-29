@@ -7,7 +7,7 @@
 #include "debug.h"
 
 extern set<unsigned int>Set;
-extern URL url; 
+extern URL g_url; 
 extern queue<URL>que;
 extern struct epoll_event events[31];
 extern int epfd;
@@ -127,7 +127,7 @@ int SendRequest(int sockfd, URL& url_t)
     //request = string(req);
     #ifdef DEBUG
         const char *info = request.c_str();
-        PRINT(info);
+        //PRINT(info);
     #endif
   
     // write(send request)
@@ -171,9 +171,10 @@ double Calc_Time_Sec(struct timeval st, struct timeval ed)
 
 void get_content_type(string content, string& html_type)
 {
-    if (content.find("text/html") != string::npos ||
-        content.find("text/css") != string::npos)
-        html_type = "text";
+    if (content.find("text/html") != string::npos)
+        html_type = "text/html";
+    else if (content.find("text/css") != string::npos)
+        html_type = "text/css";
     else if (content.find("image") != string::npos)
         html_type = "image";
     else
@@ -222,7 +223,7 @@ int read_and_parse_header(int sockfd, string& html_type)
         }
 
 #ifdef DEBUG
-        //PRINT(line_buf);
+        PRINT(line_buf);
 #endif
         if (strcmp(line_buf, "\r\n") == 0 || strcmp(line_buf, "\n") == 0)
             break;
@@ -239,8 +240,7 @@ int read_and_parse_header(int sockfd, string& html_type)
             get_content_type(line_buf, html_type);
     }
 
-    if ((resp_success == true) &&
-        (html_type == "text" || html_type == "image"))
+    if ((resp_success == true) && (html_type != "unknown"))
         return content_length;
 
     return -1;
@@ -272,13 +272,14 @@ void* GetResponse(void *argument)
     int content_length = read_and_parse_header(sockfd, html_type);
 
 #ifdef DEBUG
-    char info[200];
-    sprintf(info, "expected content_length: %d", content_length);
+    char info[250];
+    string url_full = url_t.GetHost() + url_t.GetFile();
+    sprintf(info, "expected content_length: %d; content_type: %s; xxx: %s", content_length, html_type.c_str(), url_full.c_str());
     PRINT(info);
 #endif
 
     //
-    bool skip_flag = (html_type == "text");
+    bool skip_flag = (html_type == "text/html");
     recv_len = 0;
 
     // skip read the content since the GET request is failed
@@ -341,10 +342,10 @@ void* GetResponse(void *argument)
     if (recv_len < content_length)
         goto NEXT;
 
-    html_content = string(tmp);
+    html_content = string(tmp, recv_len);
     write_len = recv_len;
 
-    if (html_type == "text")
+    if (html_type == "text/html")
     {
         html_content.reserve(MAXLEN);
         Analyse(html_content);

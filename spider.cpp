@@ -273,29 +273,33 @@ int main(int argc, char **argv)
     init();
     
     // get normalize of the first url(url).
-    if(SetUrl(url, input) < 0) 
+    if(SetUrl(g_url, input) < 0) 
+    {
         puts("input url error");
+        exit(-1);
+    }
     
     // get host by name(do only once in the whole program)
-    if(GetHostByName(url.GetHost()) < 0)
+    if(GetHostByName(g_url.GetHost()) < 0)
      {
         printf("gethostbyname error\n");
         exit(1);
     }
     
     // use hash value for html page
-    unsigned int hashVal = hash(url.GetFile().c_str());
+    string url_full = g_url.GetHost() + g_url.GetFile();
+    unsigned int hashVal = hash(url_full.c_str());
     char tmp[31];
     
     sprintf(tmp, "%010u", hashVal);
-    url.SetFname(string(tmp));
+    g_url.SetFname(string(tmp));
 
 #ifdef DEBUG
     char info[120];
-    sprintf(info, "Add queue: %s", url.GetFile().c_str());
+    sprintf(info, "Add queue: %s", g_url.GetFile().c_str());
     PRINT(info);
 #endif
-    que.push(url);
+    que.push(g_url);
         
     pthread_mutex_lock(&setlock);
     Set.insert(hashVal);

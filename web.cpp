@@ -7,7 +7,7 @@
 #include "debug.h"
 
 extern set<unsigned int>Set;
-extern URL url;
+extern URL g_url;
 extern queue<URL>que;
 extern string keyword;
 extern pthread_mutex_t quelock;
@@ -69,6 +69,7 @@ int SetUrl(URL& url_t, string& url)
     }
     else
     {
+        url_t.SetHost(g_url.GetHost()); // use the first url's host
         url_t.SetFile(src);
     }
     // url_t.SetPort(80);
@@ -118,7 +119,6 @@ string get_url(string& src, int search_pos, int& insert_start_pos, int& insert_e
     while (src[idx] != ch_flag) idx++;
     insert_end_pos = idx;
     
-    //printf("%d %d %d %d %d\n", p1, p2, insert_start_pos, insert_end_pos, src.length());
     return string(src, insert_start_pos+1, insert_end_pos-insert_start_pos-1);
 }
 
@@ -151,11 +151,11 @@ void Analyse(string& src)
         }
 
         // modify the set(Set)
-        unsigned int hashVal = hash(url_t.GetFile().c_str());
         char tmp[31]; 
-
+        string url_full = url_t.GetHost() + url_t.GetFile();
+        unsigned int hashVal = hash(url_full.c_str());
         sprintf(tmp, "%010u", hashVal);
-        // judge whether has fetched
+
         if(Set.find(hashVal) == Set.end()) 
         { 
             pthread_mutex_lock(&setlock);

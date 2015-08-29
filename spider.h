@@ -6,7 +6,7 @@
 
 struct epoll_event events[31];  // return events which will be dealed with.
 set<unsigned int>Set;           // the 'hash-table'.
-URL url;                        // first url we set.
+URL g_url;                        // first url we set.
 queue<URL>que;                  // url wait-queue(from each thread).
 int cnt;                        // record how many urls we have fetched.
 int sum_byte;                   // record how many bytes we have fetched.
