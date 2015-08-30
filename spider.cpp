@@ -15,13 +15,14 @@
 
 void init()
 {
-    cnt = 0;
-    sum_byte = 0;
-    pending = 0;
-    is_first_url = true;
-    input = START_URL;
-    keyword = KEYWORD;
-    time_used = 0;
+    g_cnt = 0;
+    g_sum_byte = 0;
+    g_pending = 0;
+    g_is_first_url = true;
+    g_input = START_URL;
+    g_keyword = KEYWORD;
+    g_time_used = 0;
+    g_nthread = 5;
 }
 
 /* Usage()
@@ -88,11 +89,11 @@ void generator()
     while(1) 
     {
         // max num of url we want to fetch
-        if(cnt>=MAX_URL) 
+        if(g_cnt>=MAX_URL) 
             break;
 
         // int epoll_wait(int epfd, struct epoll_event * events, int maxevents, int timeout);
-        int n = epoll_wait(epfd, events, 30, 2000);
+        int n = epoll_wait(g_epfd, g_events, 30, 2000);
         
         // set retry_wait_times 
         if(retry_wait_times >= TIMEOUT) 
@@ -107,7 +108,7 @@ void generator()
             perror("epoll_wait_error");
             break;
         }
-        else if(n==0 && que.empty()) 
+        else if(n==0 && g_que.empty()) 
         {
             retry_wait_times++;
             continue;
@@ -117,7 +118,7 @@ void generator()
         // create pthread for every event and call GetResponse().
         for(int i=0; i<n; i++) 
         {
-            struct argument* arg = (struct argument*)events[i].data.ptr;
+            struct argument* arg = (struct argument*)g_events[i].data.ptr;
             
             pthread_attr_t pAttr;
             pthread_t      thread;
@@ -139,9 +140,9 @@ void generator()
             struct epoll_event ev;
             
             // delete used event with sockfd = arg->sockfd.
-            if(epoll_ctl(epfd, EPOLL_CTL_DEL, arg->sockfd, &ev) == -1) 
+            if(epoll_ctl(g_epfd, EPOLL_CTL_DEL, arg->sockfd, &ev) == -1) 
             {
-                epoll_ctl(epfd, EPOLL_CTL_MOD, arg->sockfd, &ev);
+                epoll_ctl(g_epfd, EPOLL_CTL_MOD, arg->sockfd, &ev);
                 perror("epoll_ctl_del");
                 continue;
             }
@@ -155,26 +156,29 @@ void generator()
 
 void start_run()
 {
-    // create epoll fd(epfd) with maximum events 50
-    epfd = epoll_create(50);
+    // create epoll fd(g_epfd) with maximum events 50
+    g_epfd = epoll_create(50);
 
-    int n = (que.size()>=30) ? 30 : que.size();
+    int n = (g_que.size()>=g_nthread) ?  g_nthread : g_que.size();
 
     for(int i=0; i<n; i++) // foreach url we want fetch
     {
         pthread_mutex_lock(&quelock);
-        URL url_t = que.front();
-        que.pop();
+        URL url_t = g_que.front();
+        g_que.pop();
         pthread_mutex_unlock(&quelock);
         
         int sockfd;
         
         // connect to web
         int retry_conn_times = 0;
-        while(ConnectWeb(sockfd) < 0 && retry_conn_times < 10) 
+        while(ConnectWeb(sockfd) < 0 && retry_conn_times < 5) 
+        {
+            sleep(1);
             retry_conn_times++;
+        }
 
-        if(retry_conn_times >= 10) 
+        if(retry_conn_times >= 5) 
         {
             perror("create socket");
             exit(1);
@@ -204,7 +208,7 @@ void start_run()
 
         // int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event);
         // enroll event by EPOLL_CTL_ADD mode
-        if(epoll_ctl(epfd, EPOLL_CTL_ADD, sockfd, &ev) == -1) 
+        if(epoll_ctl(g_epfd, EPOLL_CTL_ADD, sockfd, &ev) == -1) 
         { 
             perror("epoll_ctl_add");
             exit(1);
@@ -212,7 +216,7 @@ void start_run()
     }
 
     generator(); // handle response
-    close(epfd);
+    close(g_epfd);
 }
 
 /* summery(timeval t_st, timeval t_ed)
@@ -226,16 +230,16 @@ void summery(timeval t_st, timeval t_ed)
 
     time(&ti);
     p = gmtime(&ti);
-    time_used = Calc_Time_Sec(t_st, t_ed);
+    g_time_used = Calc_Time_Sec(t_st, t_ed);
 
     // print summary infomations
     printf("\n                           STATISTICS\n");
     printf("----------------------------------------------------------------------\n");
-    printf("fetch target:           %s\n", input.c_str());
-    printf("totally urls fetched:   %d\n", cnt);
-    printf("totally byte fetched:   %.2fKB\n", sum_byte/1024.0);
-    printf("totally time cost:      %.2fs\n", time_used);
-    printf("average download speed: %.2fKB/s\n", sum_byte/1024.0/time_used);
+    printf("fetch target:           %s\n", g_input.c_str());
+    printf("totally urls fetched:   %d\n", g_cnt);
+    printf("totally byte fetched:   %.2fKB\n", g_sum_byte/1024.0);
+    printf("totally time cost:      %.2fs\n", g_time_used);
+    printf("average download speed: %.2fKB/s\n", g_sum_byte/1024.0/g_time_used);
     printf("auther:                 szw\n");
     printf("date:                   %04d-%02d-%02d\n",(1900+p->tm_year), (1+p->tm_mon),p->tm_mday);  
     printf("time:                   %02d:%02d:%02d\n", (p->tm_hour+8)%24, p->tm_min, p->tm_sec);  
@@ -273,7 +277,7 @@ int main(int argc, char **argv)
     init();
     
     // get normalize of the first url(url).
-    if(SetUrl(g_url, input) < 0) 
+    if(SetUrl(g_url, g_input) < 0) 
     {
         puts("input url error");
         exit(-1);
@@ -296,13 +300,13 @@ int main(int argc, char **argv)
 
 #ifdef DEBUG
     char info[120];
-    sprintf(info, "Add queue: %s", g_url.GetFile().c_str());
+    sprintf(info, "Add queue: %u %s", hashVal, url_full.c_str());
     PRINT(info);
 #endif
-    que.push(g_url);
+    g_que.push(g_url);
         
     pthread_mutex_lock(&setlock);
-    Set.insert(hashVal);
+    g_Set.insert(hashVal);
     pthread_mutex_unlock(&setlock);
     
     // 3. start

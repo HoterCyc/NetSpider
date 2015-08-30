@@ -6,10 +6,10 @@
 #include "web.h"
 #include "debug.h"
 
-extern set<unsigned int>Set;
+extern set<unsigned int> g_Set;
 extern URL g_url;
-extern queue<URL>que;
-extern string keyword;
+extern queue<URL> g_que;
+extern string g_keyword;
 extern pthread_mutex_t quelock;
 extern pthread_mutex_t setlock;
 const unsigned int MOD = 0x7fffffff;
@@ -47,7 +47,7 @@ int SetUrl(URL& url_t, string& url)
 
     // rm characters after '?'
     if ((p = src.find_first_of('?')) != string::npos)
-        src = src.assign(src, 0, p-1);
+        src = src.assign(src, 0, p);
     
     // check whether src start with "http://" or "//"
     if ((src.compare(0, 7, "http://") == 0) ||
@@ -125,7 +125,7 @@ string get_url(string& src, int search_pos, int& insert_start_pos, int& insert_e
 /* Analyse()
  * analyse the Web Page which has fetched
  * in the function, we will get all fitted url and insert into
- * wait-queue(que).
+ * wait-queue(g_que).
  */
 
 void Analyse(string& src)
@@ -142,7 +142,7 @@ void Analyse(string& src)
         //PRINT(str.c_str());
 #endif
         // judge whether contains keyword
-        if(keyword != "" && str.find(keyword) == string::npos)
+        if(g_keyword != "" && str.find(g_keyword) == string::npos)
             continue;
         else 
         {
@@ -150,25 +150,30 @@ void Analyse(string& src)
                 continue;
         }
 
-        // modify the set(Set)
+        // modify the set(g_Set)
         char tmp[31]; 
         string url_full = url_t.GetHost() + url_t.GetFile();
         unsigned int hashVal = hash(url_full.c_str());
         sprintf(tmp, "%010u", hashVal);
 
-        if(Set.find(hashVal) == Set.end()) 
+        if (url_full.length() > 150) // protection
+            continue;
+
+        if(g_Set.find(hashVal) == g_Set.end()) 
         { 
             pthread_mutex_lock(&setlock);
-            Set.insert(hashVal);
+            g_Set.insert(hashVal);
             pthread_mutex_unlock(&setlock);
+
             url_t.SetFname(string(tmp));
+
             pthread_mutex_lock(&quelock);
 #ifdef DEBUG
             char info[250];
-            sprintf(info, "%-5dAdd queue: %s", que.size(), url_t.GetFile().c_str());
+            sprintf(info, "%-5dAdd queue: %u %s", g_que.size(), hashVal, url_full.c_str());
             PRINT(info);
 #endif
-            que.push(url_t);
+            g_que.push(url_t);
             pthread_mutex_unlock(&quelock);
             
         }
