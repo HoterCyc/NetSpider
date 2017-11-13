@@ -255,7 +255,7 @@ void* GetResponse(void *argument)
     int nrecv, len, recv_len;
     int fd;
     char buffer[1024];                                  // record read buffer from every read() operation
-    char tmp[MAXLEN]={0};                               // record the tmp Web Page
+    char tmp[MAXLEN]={{0}};                               // record the tmp Web Page
     URL url_t = arg->url;
     int write_len;
 
